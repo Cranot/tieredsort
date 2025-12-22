@@ -1,0 +1,41 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# Compiled files
+*.exe
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+
+# IDE files
+.vs/
+.vscode/
+*.sln
+*.vcxproj*
+.idea/
+*.sublime-*
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# Testing
+Testing/
+CTestTestfile.cmake
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Benchmark results (keep examples)
+results_*.txt
+!benchmark/results_example.txt
