@@ -39,3 +39,9 @@ desktop.ini
 # Benchmark results (keep examples)
 results_*.txt
 !benchmark/results_example.txt
+
+# Test output
+err.txt
+out.txt
+test_output.txt
+run_test.ps1
