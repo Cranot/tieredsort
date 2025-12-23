@@ -49,7 +49,7 @@ tiered::sort(data.begin(), data.end());  // That's it!
 - **5 different random seeds** to avoid data bias
 - **Rotating algorithm order** to avoid cache bias
 - Reporting **median** with IQR (interquartile range)
-- Compiled with `-O3 -std=c++17 -march=native`
+- Compiled with GCC 13.1, `-O3 -std=c++17 -march=native`
 
 ### Synthetic Patterns (n = 100,000)
 
