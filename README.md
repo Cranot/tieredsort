@@ -217,6 +217,12 @@ tiered::sort_by_key(students.begin(), students.end(),
 // Students with equal scores maintain their original order
 ```
 
+**Performance** (vs `std::stable_sort` with comparator):
+- Dense keys (ages 0-100, scores 0-1000): **3-6x faster**
+- Sparse keys (random 32-bit): ~1x (graceful fallback)
+
+Uses counting sort directly on objects for dense ranges - O(n + range) with only 2 allocations.
+
 ### Stable Sort (Primitives)
 
 ```cpp
