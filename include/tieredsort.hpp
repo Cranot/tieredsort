@@ -299,6 +299,29 @@ bool is_pattern_sorted(const T* arr, size_t n) {
 // TIER 3: DENSE RANGE DETECTION (sampling)
 // =============================================================================
 
+// Helper to compute range safely for any integer type (handles 64-bit overflow)
+template<typename T>
+inline uint64_t safe_range(T min_val, T max_val) {
+    if constexpr (sizeof(T) <= 4) {
+        // 32-bit types: safe to use int64_t arithmetic
+        return static_cast<uint64_t>(
+            static_cast<int64_t>(max_val) - static_cast<int64_t>(min_val) + 1
+        );
+    } else {
+        // 64-bit types: use unsigned arithmetic to avoid overflow
+        // Convert signed to unsigned sortable representation (flip sign bit)
+        uint64_t umax, umin;
+        if constexpr (std::is_signed_v<T>) {
+            umax = static_cast<uint64_t>(max_val) ^ 0x8000000000000000ull;
+            umin = static_cast<uint64_t>(min_val) ^ 0x8000000000000000ull;
+        } else {
+            umax = static_cast<uint64_t>(max_val);
+            umin = static_cast<uint64_t>(min_val);
+        }
+        return umax - umin + 1;
+    }
+}
+
 template<typename T>
 bool detect_dense_range(const T* arr, size_t n, T& out_min, T& out_max) {
     static_assert(std::is_integral_v<T>, "dense range detection requires integral type");
@@ -313,9 +336,9 @@ bool detect_dense_range(const T* arr, size_t n, T& out_min, T& out_max) {
         if (arr[i] > max_val) max_val = arr[i];
     }
 
-    // Check if sampled range suggests dense data
-    int64_t range_est = static_cast<int64_t>(max_val) - static_cast<int64_t>(min_val) + 1;
-    if (range_est > static_cast<int64_t>(n)) {
+    // Check if sampled range suggests dense data (using overflow-safe arithmetic)
+    uint64_t range_est = safe_range(min_val, max_val);
+    if (range_est > static_cast<uint64_t>(n)) {
         return false;
     }
 
@@ -325,8 +348,8 @@ bool detect_dense_range(const T* arr, size_t n, T& out_min, T& out_max) {
         if (arr[i] > max_val) max_val = arr[i];
     }
 
-    int64_t range = static_cast<int64_t>(max_val) - static_cast<int64_t>(min_val) + 1;
-    if (range <= static_cast<int64_t>(n) * 2) {
+    uint64_t range = safe_range(min_val, max_val);
+    if (range <= static_cast<uint64_t>(n) * 2) {
         out_min = min_val;
         out_max = max_val;
         return true;

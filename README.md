@@ -322,6 +322,14 @@ void stable_sort(RandomIt first, RandomIt last,
                  typename std::iterator_traits<RandomIt>::value_type* buffer);
 ```
 
+## Changelog
+
+### v1.0.1 (2025-12-24)
+- **Fixed**: Integer overflow in range detection for 64-bit types (`int64_t`, `uint64_t`) that could cause crashes with random data spanning large ranges
+
+### v1.0.0 (2025-12-22)
+- Initial release
+
 ## Contributing
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
