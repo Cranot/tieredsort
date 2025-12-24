@@ -650,7 +650,7 @@ inline bool is_pattern_sorted_keys(const int32_t* keys, size_t n) {
  * Unlike primitive sorting where stability is unobservable, key-based sorting
  * on objects has meaningful, verifiable stability.
  *
- * Performance: ~1.4x faster than std::stable_sort for object sorting.
+ * Matches std::stable_sort output exactly with verifiable stability.
  *
  * @param first Iterator to beginning
  * @param last Iterator to end
