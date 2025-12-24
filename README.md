@@ -326,6 +326,7 @@ void stable_sort(RandomIt first, RandomIt last,
 
 ### v1.0.1 (2025-12-24)
 - **Fixed**: Integer overflow in range detection for 64-bit types (`int64_t`, `uint64_t`) that could cause crashes with random data spanning large ranges
+- **Perf**: Lazy allocation - no longer allocates temp buffer for sorted, reversed, or dense data paths (eliminates ~400KB allocation overhead for these cases)
 
 ### v1.0.0 (2025-12-22)
 - Initial release
