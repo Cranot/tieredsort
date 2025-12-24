@@ -16,17 +16,16 @@
 <h3 align="center">Quick Benchmark (n=100,000)</h3>
 
 ```
-Algorithm      Random       Dense (0-100)    vs std::sort    vs ska_sort
-────────────────────────────────────────────────────────────────────────
-std::sort      5,352 us     3,082 us         1.0x            0.4x
-ska_sort       2,297 us       976 us         2.3x            1.0x
-tieredsort     1,402 us       102 us          3.8x - 30x     1.6x - 9.6x
+Algorithm      Random       Dense (0-100)    vs std::sort
+─────────────────────────────────────────────────────────
+std::sort      5,364 us     3,347 us         1.0x
+tieredsort     1,494 us       159 us         3.6x - 21x
 ```
 
-**Comprehensive Real-World Testing (15 patterns, 3 sizes):**
-- **13.16x average speedup** vs std::sort across all real-world patterns
-- **1.88x faster** than ska_sort overall
-- **15/15 wins** (100% win rate) on production-like data
+**Highlights:**
+- **3.6x faster** on random data
+- **16-21x faster** on dense/few-unique data
+- **6.2x faster** on Zipf distributions
 
 ---
 
@@ -53,37 +52,37 @@ tiered::sort(data.begin(), data.end());  // That's it!
 
 ### Synthetic Patterns (n = 100,000)
 
-| Pattern | std::sort | ska_sort | tieredsort | vs std | vs ska |
-|---------|----------:|---------:|-----------:|-------:|-------:|
-| Random | 5,352 us | 2,297 us | **1,402 us** | **3.8x** | **1.6x** |
-| Sorted | 1,894 us | 1,668 us | 1,598 us | 1.2x | 1.0x |
-| Reversed | 1,354 us | 1,697 us | 1,443 us | 0.9x | 1.2x |
-| Nearly Sorted | 2,306 us | 2,082 us | 2,073 us | 1.1x | 1.0x |
-| Few Unique (10) | 2,344 us | 860 us | **276 us** | **8.5x** | **3.1x** |
-| Dense (0-100) | 3,082 us | 976 us | **102 us** | **30.2x** | **9.6x** |
+| Pattern | std::sort | tieredsort | vs std |
+|---------|----------:|-----------:|-------:|
+| Random | 5,364 us | **1,494 us** | **3.6x** |
+| Sorted | 1,442 us | 1,440 us | 1.0x |
+| Reversed | 1,123 us | 1,148 us | 0.98x |
+| Nearly Sorted | 2,009 us | 2,081 us | 0.97x |
+| Few Unique (10) | 2,595 us | **159 us** | **16.3x** |
+| Dense (0-100) | 3,347 us | **159 us** | **21.1x** |
+| Organ Pipe | 6,820 us | 6,715 us | 1.0x |
+| Zipf | 4,278 us | **685 us** | **6.2x** |
 
-### Real-World Patterns (n = 100,000) ⭐
+### Scaling Benchmark (Random Data)
 
-| Pattern | std::sort | ska_sort | tieredsort | vs std | vs ska |
-|---------|----------:|---------:|-----------:|-------:|-------:|
-| Database IDs | 5,509 us | 3,273 us | **1,472 us** | **3.7x** | **2.2x** |
-| User Ages (0-100) | 3,090 us | 912 us | **102 us** | **30.3x** | **8.9x** |
-| Sensor 12-bit | 4,442 us | 1,689 us | **148 us** | **30.0x** | **11.4x** |
-| Network Ports | 6,257 us | 1,818 us | **818 us** | **7.7x** | **2.2x** |
-| Timestamps | 5,152 us | 2,394 us | **1,450 us** | **3.6x** | **1.7x** |
-| Fully Random | 5,561 us | 2,071 us | **1,369 us** | **4.1x** | **1.5x** |
+| Size | std::sort | tieredsort | Speedup |
+|-----:|----------:|-----------:|--------:|
+| 1,000 | 29 us | 11 us | 2.5x |
+| 10,000 | 437 us | 218 us | 2.0x |
+| 100,000 | 5,358 us | 1,489 us | 3.6x |
+| 500,000 | 30,974 us | 9,750 us | 3.2x |
+| 1,000,000 | 65,216 us | 20,602 us | 3.2x |
 
-**Overall (15 patterns, 3 sizes: 10K-1M):**
-- Average speedup: **13.16x** vs std::sort
-- Overall speedup: **1.88x** vs ska_sort
-- Win rate: **15/15 (100%)**
+### Type Performance (n = 100,000)
 
-### Results (n = 1,000,000)
-
-| Pattern | std::sort | ska_sort | tieredsort | vs std | vs ska |
-|---------|----------:|---------:|-----------:|-------:|-------:|
-| Random | 64,269 us | 25,124 us | **20,204 us** | **3.2x** | **1.2x** |
-| Dense (0-100) | 34,216 us | 10,079 us | **3,595 us** | **9.5x** | **2.8x** |
+| Type | std::sort | tieredsort | Speedup |
+|------|----------:|-----------:|--------:|
+| int32_t | 5,519 us | 1,481 us | **3.7x** |
+| uint32_t | 5,218 us | 1,475 us | **3.5x** |
+| int64_t | 5,416 us | 3,211 us | 1.7x |
+| uint64_t | 5,403 us | 3,962 us | 1.4x |
+| float | 7,370 us | 1,433 us | **5.1x** |
+| double | 7,506 us | 4,132 us | 1.8x |
 
 ### Correctness Validation ✓
 
@@ -97,11 +96,12 @@ tiered::sort(data.begin(), data.end());  // That's it!
 
 | Data Type | Speedup | Recommendation |
 |-----------|---------|----------------|
-| Random integers | 3-4x vs std::sort | Use tieredsort |
-| Dense values (ages, scores) | 8-30x vs std::sort | **Strongly recommend** |
-| Real-world data (IDs, timestamps) | 2-4x vs std::sort | Use tieredsort |
-| Already sorted | ~1x | Either works |
-| Reversed | 0.9x | std::sort slightly faster |
+| Random integers | 3.6x | Use tieredsort |
+| Dense values (ages, scores) | 16-21x | **Strongly recommend** |
+| Zipf distributions | 6.2x | Use tieredsort |
+| 32-bit types (int32, float) | 3.5-5x | Use tieredsort |
+| 64-bit types | 1.4-1.8x | Modest improvement |
+| Already sorted/reversed | ~1x | Either works |
 
 ## How It Works
 
@@ -249,9 +249,8 @@ tiered::sort(vec_double.begin(), vec_double.end()); // double
 | Library | Type | Random | Dense | Key-Stable¹ | Types |
 |---------|------|--------|-------|-------------|-------|
 | std::sort | Introsort | 1.0x | 1.0x | No | Any |
-| pdqsort | Pattern-defeating QS | 2.0x | 2.0x | No | Any |
-| ska_sort | Hybrid radix | 2.3x | 3.2x | No | Numeric |
-| **tieredsort** | **3-tier adaptive** | **3.8x** | **11.5x** | **Yes** | Numeric |
+| pdqsort | Pattern-defeating QS | ~2x | ~2x | No | Any |
+| **tieredsort** | **3-tier adaptive** | **3.6x** | **21x** | **Yes** | Numeric |
 | vqsort | SIMD (AVX2+) | 10-20x | - | No | Numeric |
 
 > ¹ **Key-Stable**: `sort_by_key()` provides stable sorting for objects by a numeric key.
