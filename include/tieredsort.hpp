@@ -504,9 +504,35 @@ void sort(RandomIt first, RandomIt last) {
     if (n <= 1) return;
 
     T* arr = &(*first);
-    std::vector<T> temp(n);
 
-    detail::tieredsort_impl(arr, n, temp.data());
+    // Tier 1: Small arrays - no allocation needed
+    if (n < 256) {
+        std::sort(arr, arr + n);
+        return;
+    }
+
+    // Tier 2: Pattern detection - no allocation needed
+    if (detail::is_pattern_sorted(arr, n)) {
+        std::sort(arr, arr + n);
+        return;
+    }
+
+    // Tier 3: Dense range (integers only) - no allocation needed
+    if constexpr (std::is_integral_v<T>) {
+        T min_val, max_val;
+        if (detail::detect_dense_range(arr, n, min_val, max_val)) {
+            detail::counting_sort(arr, n, min_val, max_val);
+            return;
+        }
+    }
+
+    // Tier 4: Radix sort - only NOW allocate
+    std::vector<T> temp(n);
+    if constexpr (sizeof(T) == 4) {
+        detail::radix_sort_32(arr, n, temp.data());
+    } else {
+        detail::radix_sort_64(arr, n, temp.data());
+    }
 }
 
 /**
@@ -562,9 +588,37 @@ void stable_sort(RandomIt first, RandomIt last) {
     if (n <= 1) return;
 
     T* arr = &(*first);
+
+    // Tier 1: Small arrays - no allocation needed
+    if (n < 256) {
+        std::stable_sort(arr, arr + n);
+        return;
+    }
+
+    // Tier 2: Pattern detection - no allocation needed
+    if (detail::is_pattern_sorted(arr, n)) {
+        std::stable_sort(arr, arr + n);
+        return;
+    }
+
+    // Tiers 3 & 4 need temp buffer
     std::vector<T> temp(n);
 
-    detail::tieredsort_stable_impl(arr, n, temp.data());
+    // Tier 3: Dense range (integers only)
+    if constexpr (std::is_integral_v<T>) {
+        T min_val, max_val;
+        if (detail::detect_dense_range(arr, n, min_val, max_val)) {
+            detail::counting_sort_stable(arr, n, min_val, max_val, temp.data());
+            return;
+        }
+    }
+
+    // Tier 4: Radix sort
+    if constexpr (sizeof(T) == 4) {
+        detail::radix_sort_32(arr, n, temp.data());
+    } else {
+        detail::radix_sort_64(arr, n, temp.data());
+    }
 }
 
 /**
