@@ -361,21 +361,15 @@ struct Item {
 
 void test_stable_sort() {
     std::cout << "\n=== Stable Sort Tests ===\n";
+    std::cout << "  Note: For primitives, stability is not observable.\n";
+    std::cout << "  These tests verify CORRECTNESS. See sort_by_key tests for stability.\n\n";
 
-    // Test 1: Verify stability with duplicate keys
+    // Test 1: Verify correctness with duplicate keys
+    // NOTE: For primitives, we can only test that output is sorted correctly.
+    // Stability (preserving relative order of equal elements) is NOT observable
+    // because equal primitive values are indistinguishable.
     {
-        // Create items with duplicate keys but different original positions
         std::vector<int32_t> keys = {3, 1, 4, 1, 5, 9, 2, 6, 5, 3};
-        std::vector<Item> items(keys.size());
-        for (size_t i = 0; i < keys.size(); i++) {
-            items[i] = {keys[i], static_cast<int32_t>(i)};
-        }
-
-        // Sort by key using std::stable_sort as reference
-        auto expected = items;
-        std::stable_sort(expected.begin(), expected.end());
-
-        // Sort keys with tiered::stable_sort
         auto sorted_keys = keys;
         tiered::stable_sort(sorted_keys.begin(), sorted_keys.end());
 
@@ -385,10 +379,10 @@ void test_stable_sort() {
 
         if (sorted_keys == check_keys) {
             tests_passed++;
-            std::cout << "  [PASS] stable_sort correctness\n";
+            std::cout << "  [PASS] stable_sort correctness (primitives)\n";
         } else {
             tests_failed++;
-            std::cout << "  [FAIL] stable_sort correctness\n";
+            std::cout << "  [FAIL] stable_sort correctness (primitives)\n";
         }
     }
 
@@ -516,6 +510,180 @@ void test_stable_sort() {
 }
 
 // =============================================================================
+// Key-Based Sorting Tests (with OBSERVABLE stability)
+// =============================================================================
+
+// Test struct for sort_by_key
+struct Record {
+    int32_t key;
+    int32_t original_pos;
+};
+
+void test_sort_by_key() {
+    std::cout << "\n=== sort_by_key Tests (Observable Stability) ===\n";
+
+    // Test 1: Verify stability with duplicate keys
+    {
+        std::vector<int32_t> keys = {3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 1, 1, 2, 3};
+        std::vector<Record> records(keys.size());
+        for (size_t i = 0; i < keys.size(); i++) {
+            records[i] = {keys[i], static_cast<int32_t>(i)};
+        }
+
+        tiered::sort_by_key(records.begin(), records.end(),
+            [](const Record& r) { return r.key; });
+
+        // Verify stability: for equal keys, original_pos must be ascending
+        bool stable = true;
+        bool sorted = true;
+        for (size_t i = 1; i < records.size(); i++) {
+            if (records[i].key < records[i-1].key) {
+                sorted = false;
+            }
+            if (records[i].key == records[i-1].key &&
+                records[i].original_pos < records[i-1].original_pos) {
+                stable = false;
+            }
+        }
+
+        if (sorted && stable) {
+            tests_passed++;
+            std::cout << "  [PASS] sort_by_key stability verified\n";
+        } else {
+            tests_failed++;
+            std::cout << "  [FAIL] sort_by_key stability - sorted=" << sorted << " stable=" << stable << "\n";
+        }
+    }
+
+    // Test 2: Match std::stable_sort exactly
+    {
+        std::vector<int32_t> keys = {3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 1, 1, 2, 3};
+        std::vector<Record> our_records(keys.size());
+        std::vector<Record> std_records(keys.size());
+        for (size_t i = 0; i < keys.size(); i++) {
+            our_records[i] = {keys[i], static_cast<int32_t>(i)};
+            std_records[i] = {keys[i], static_cast<int32_t>(i)};
+        }
+
+        tiered::sort_by_key(our_records.begin(), our_records.end(),
+            [](const Record& r) { return r.key; });
+        std::stable_sort(std_records.begin(), std_records.end(),
+            [](const Record& a, const Record& b) { return a.key < b.key; });
+
+        bool match = true;
+        for (size_t i = 0; i < keys.size(); i++) {
+            if (our_records[i].key != std_records[i].key ||
+                our_records[i].original_pos != std_records[i].original_pos) {
+                match = false;
+                break;
+            }
+        }
+
+        if (match) {
+            tests_passed++;
+            std::cout << "  [PASS] sort_by_key matches std::stable_sort\n";
+        } else {
+            tests_failed++;
+            std::cout << "  [FAIL] sort_by_key does not match std::stable_sort\n";
+        }
+    }
+
+    // Test 3: Larger dataset (triggers radix sort path)
+    {
+        const size_t N = 10000;
+        std::vector<Record> our_records(N);
+        std::vector<Record> std_records(N);
+
+        std::mt19937 rng(42);
+        for (size_t i = 0; i < N; i++) {
+            int32_t key = rng() % 100;  // Only 100 unique keys = many duplicates
+            our_records[i] = {key, static_cast<int32_t>(i)};
+            std_records[i] = {key, static_cast<int32_t>(i)};
+        }
+
+        tiered::sort_by_key(our_records.begin(), our_records.end(),
+            [](const Record& r) { return r.key; });
+        std::stable_sort(std_records.begin(), std_records.end(),
+            [](const Record& a, const Record& b) { return a.key < b.key; });
+
+        bool match = true;
+        for (size_t i = 0; i < N; i++) {
+            if (our_records[i].key != std_records[i].key ||
+                our_records[i].original_pos != std_records[i].original_pos) {
+                match = false;
+                break;
+            }
+        }
+
+        if (match) {
+            tests_passed++;
+            std::cout << "  [PASS] sort_by_key large dataset (10k elements)\n";
+        } else {
+            tests_failed++;
+            std::cout << "  [FAIL] sort_by_key large dataset\n";
+        }
+    }
+
+    // Test 4: All same key (maximum stability test)
+    {
+        std::vector<Record> records(100);
+        for (int i = 0; i < 100; i++) {
+            records[i] = {42, i};  // All same key
+        }
+
+        tiered::sort_by_key(records.begin(), records.end(),
+            [](const Record& r) { return r.key; });
+
+        bool stable = true;
+        for (int i = 0; i < 100; i++) {
+            if (records[i].original_pos != i) {
+                stable = false;
+                break;
+            }
+        }
+
+        if (stable) {
+            tests_passed++;
+            std::cout << "  [PASS] sort_by_key all same key (stability preserved)\n";
+        } else {
+            tests_failed++;
+            std::cout << "  [FAIL] sort_by_key all same key (stability broken)\n";
+        }
+    }
+
+    // Test 5: Edge cases
+    {
+        bool all_pass = true;
+
+        // Empty
+        {
+            std::vector<Record> empty;
+            tiered::sort_by_key(empty.begin(), empty.end(),
+                [](const Record& r) { return r.key; });
+            // No crash = pass
+        }
+
+        // Single element
+        {
+            std::vector<Record> single = {{42, 0}};
+            tiered::sort_by_key(single.begin(), single.end(),
+                [](const Record& r) { return r.key; });
+            if (single[0].key != 42 || single[0].original_pos != 0) {
+                all_pass = false;
+            }
+        }
+
+        if (all_pass) {
+            tests_passed++;
+            std::cout << "  [PASS] sort_by_key edge cases\n";
+        } else {
+            tests_failed++;
+            std::cout << "  [FAIL] sort_by_key edge cases\n";
+        }
+    }
+}
+
+// =============================================================================
 // Main
 // =============================================================================
 
@@ -534,6 +702,7 @@ int main() {
     test_raw_arrays();
     test_stress();
     test_stable_sort();
+    test_sort_by_key();
 
     std::cout << "\n========================================\n";
     std::cout << "Results: " << tests_passed << " passed, " << tests_failed << " failed\n";

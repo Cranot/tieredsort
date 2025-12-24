@@ -88,7 +88,7 @@ tiered::sort(data.begin(), data.end());  // That's it!
 ### Correctness Validation ✓
 
 **All tests passed with 100% correctness:**
-- **34/34 validation tests** (size scaling, edge cases, negative numbers, adversarial patterns)
+- **159/159 unit tests** (size scaling, edge cases, negative numbers, stability verification)
 - **15/15 real-world patterns** across 3 data sizes (10K, 100K, 1M)
 - **10 random seeds** tested for consistency
 - **Statistical significance** verified (100 runs, p < 0.001)
@@ -205,13 +205,26 @@ std::vector<int> buffer(100000);  // Reusable buffer
 tiered::sort(data.begin(), data.end(), buffer.data());
 ```
 
-### Stable Sort
+### Sorting Objects by Key (with Observable Stability)
 
 ```cpp
-// Equal elements maintain their relative order
+// Sort structs by a numeric key - stability IS observable here
+struct Student { std::string name; int32_t score; };
+std::vector<Student> students = {...};
+
+tiered::sort_by_key(students.begin(), students.end(),
+    [](const Student& s) { return s.score; });
+// Students with equal scores maintain their original order
+```
+
+### Stable Sort (Primitives)
+
+```cpp
+// For primitives, stable_sort works but stability is NOT observable
+// (equal values are indistinguishable - you can't tell which "85" came first)
 std::vector<int> scores = {85, 90, 85, 92, 90};
 tiered::stable_sort(scores.begin(), scores.end());
-// First 85 stays before second 85, first 90 stays before second 90
+// Use sort_by_key() for objects where stability matters
 ```
 
 ### Supported Types
@@ -227,13 +240,15 @@ tiered::sort(vec_double.begin(), vec_double.end()); // double
 
 ## Comparison with Other Libraries
 
-| Library | Type | Random | Dense | Stable | Types |
-|---------|------|--------|-------|--------|-------|
+| Library | Type | Random | Dense | Key-Stable¹ | Types |
+|---------|------|--------|-------|-------------|-------|
 | std::sort | Introsort | 1.0x | 1.0x | No | Any |
 | pdqsort | Pattern-defeating QS | 2.0x | 2.0x | No | Any |
 | ska_sort | Hybrid radix | 2.3x | 3.2x | No | Numeric |
-| **tieredsort** | **3-tier adaptive** | **3.8x** | **11.5x** | Yes | Numeric |
+| **tieredsort** | **3-tier adaptive** | **3.8x** | **11.5x** | **Yes** | Numeric |
 | vqsort | SIMD (AVX2+) | 10-20x | - | No | Numeric |
+
+> ¹ **Key-Stable**: `sort_by_key()` provides stable sorting for objects by a numeric key.
 
 > **Note**: vqsort requires AVX2/AVX-512 hardware. tieredsort works on any CPU.
 
@@ -269,9 +284,22 @@ void sort(RandomIt first, RandomIt last,
           typename std::iterator_traits<RandomIt>::value_type* buffer);
 ```
 
+### `tiered::sort_by_key(first, last, key_func)`
+
+Sort objects by a numeric key with **observable, verifiable stability**.
+Objects with equal keys maintain their relative order.
+
+```cpp
+template<typename RandomIt, typename KeyFunc>
+void sort_by_key(RandomIt first, RandomIt last, KeyFunc key_func);
+// key_func must return int32_t or uint32_t
+```
+
 ### `tiered::stable_sort(first, last)`
 
-Stable sort - equal elements maintain their relative order.
+Stable sort for primitives. Note: for primitive types (int, float, etc.),
+stability is maintained but **not observable** since equal values are
+indistinguishable. Use `sort_by_key()` for objects where stability matters.
 
 ```cpp
 template<typename RandomIt>
